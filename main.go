@@ -6,7 +6,7 @@ import (
 )
 
 func newApp() *fiber.App {
-	tlist := make(todos.TodoList, 0)
+	tlist := todos.NewRAMTodoList()
 	app := fiber.New()
 	app.Get("/todos", tlist.GetAll)
 	app.Get("/todos/:id", tlist.GetById)
@@ -15,5 +15,5 @@ func newApp() *fiber.App {
 }
 
 func main() {
-	newApp().Listen(":8000")
+	newApp().Listen("localhost:8000")
 }
