@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Anon7250/gotodo/todos"
 	"github.com/gofiber/fiber/v2"
+  "github.com/prashantv/gostub"
 	"github.com/steinfletcher/apitest"
 )
 
@@ -31,6 +33,12 @@ func TestAddTodoOk(t *testing.T) {
 
 func TestAddTodoAndGetAll(t *testing.T) {
   app := newApp()
+
+  stubs := gostub.Stub(&todos.GetUUID, func() (string, error) {
+    return "fakeid1", nil
+  })
+  defer stubs.Reset()
+
   NewTest(app).
     Post("/todos").
     Header("Content-Type", "application/json").
@@ -41,7 +49,13 @@ func TestAddTodoAndGetAll(t *testing.T) {
   NewTest(app).
     Get("/todos").
     Expect(t).
-    Body(`[{"title": "something"}]`).
+    Body(`["fakeid1"]`).
+    Status(http.StatusOK).
+    End()
+  NewTest(app).
+    Get("/todos/fakeid1").
+    Expect(t).
+    Body(`{"id": "fakeid1", "title": "something"}`).
     Status(http.StatusOK).
     End()
 }
