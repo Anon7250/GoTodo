@@ -15,5 +15,5 @@ func newApp() *fiber.App {
 }
 
 func main() {
-	newApp().Listen("localhost:8000")
+	newApp().Listen(":8000")
 }
