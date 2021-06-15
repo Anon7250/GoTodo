@@ -3,6 +3,7 @@ import (
   "fmt"
 
 	"github.com/gofiber/fiber/v2"
+  "github.com/google/uuid"
 )
 
 type TodoItem struct {
@@ -47,4 +48,14 @@ func (todo *TodoList) AddTodo(c *fiber.Ctx) error {
 
 	fmt.Println("Adding item: ", item)
   return todo.impl.AddTodo(*item)
+}
+
+var GetUUID = GetUUIDImpl
+
+func GetUUIDImpl() (string, error) {
+  id, err := uuid.NewRandom()
+  if err != nil {
+    return "", err
+  }
+  return id.URN(), nil
 }

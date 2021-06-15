@@ -1,3 +1,4 @@
+// This is an integration test
 package main
 
 import (

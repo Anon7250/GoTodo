@@ -2,16 +2,13 @@ package todos
 
 import (
 	"github.com/gofiber/fiber/v2"
-  "github.com/google/uuid"
 )
 
 type RAMTodoList map[string]TodoItem
 
-var GetUUID = GetUUIDImpl
-
-func NewRAMTodoList() TodoList {
+func NewRAMTodoList() (*TodoList, error) {
 	ramlist := make(RAMTodoList, 0)
-  return TodoList {impl: &ramlist}
+  return &TodoList {impl: &ramlist}, nil
 }
 
 func (todo *RAMTodoList) GetAll() ([]string, error) {
@@ -38,12 +35,4 @@ func (todo *RAMTodoList) AddTodo(item TodoItem) error {
   item.Id = id
   (*todo)[item.Id] = item
 	return nil
-}
-
-func GetUUIDImpl() (string, error) {
-  id, err := uuid.NewRandom()
-  if err != nil {
-    return "", err
-  }
-  return id.URN(), nil
 }
