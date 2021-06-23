@@ -8,62 +8,98 @@ import (
 
 	"github.com/Anon7250/gotodo/todos"
 	"github.com/gofiber/fiber/v2"
-  "github.com/prashantv/gostub"
+	"github.com/prashantv/gostub"
 	"github.com/steinfletcher/apitest"
 )
 
-
 func TestGetAllTodosInitialValue(t *testing.T) {
-  NewTest(newApp()).
-    Get("/todos").
-    Expect(t).
-    Body(`[]`).
-    Status(http.StatusOK).
-    End()
+	NewTest(newApp()).
+		Get("/todos").
+		Expect(t).
+		Body(`[]`).
+		Status(http.StatusOK).
+		End()
+}
+
+func TestAddTodoWithoutListForbidden(t *testing.T) {
+	NewTest(newApp()).
+		Post("/todos").
+		Header("Content-Type", "application/json").
+		Body(`{"title": "something", "list_id": "BAD_ID"}`).
+		Expect(t).
+		Status(http.StatusForbidden).
+		End()
+	NewTest(newApp()).
+		Post("/todos").
+		Header("Content-Type", "application/json").
+		Body(`{"title": "something"}`).
+		Expect(t).
+		Status(http.StatusForbidden).
+		End()
 }
 
 func TestAddTodoOk(t *testing.T) {
-  NewTest(newApp()).
-    Post("/todos").
-    Header("Content-Type", "application/json").
-    Body(`{"title": "something"}`).
-    Expect(t).
-    Status(http.StatusOK).
-    End()
+	app := newApp()
+
+	var list todos.TodoList
+	NewTest(app).
+		Post("/lists").
+		Header("Content-Type", "application/json").
+		Body(`{}`).
+		Expect(t).
+		Status(http.StatusOK).
+		End().JSON(&list)
+
+	NewTest(app).
+		Post("/todos").
+		Header("Content-Type", "application/json").
+		Body(`{"title": "something", "list_id": "` + list.Id + `"}`).
+		Expect(t).
+		Status(http.StatusOK).
+		End()
 }
 
 func TestAddTodoAndGetAll(t *testing.T) {
-  app := newApp()
+	app := newApp()
 
-  stubs := gostub.Stub(&todos.GetUUID, func() (string, error) {
-    return "fakeid1", nil
-  })
-  defer stubs.Reset()
+	stubs := gostub.Stub(&todos.GetUUID, func() (string, error) {
+		return "fakeid1", nil
+	})
+	defer stubs.Reset()
 
-  NewTest(app).
-    Post("/todos").
-    Header("Content-Type", "application/json").
-    Body(`{"title": "something"}`).
-    Expect(t).
-    Status(http.StatusOK).
-    End()
-  NewTest(app).
-    Get("/todos").
-    Expect(t).
-    Body(`["fakeid1"]`).
-    Status(http.StatusOK).
-    End()
-  NewTest(app).
-    Get("/todos/fakeid1").
-    Expect(t).
-    Body(`{"id": "fakeid1", "title": "something"}`).
-    Status(http.StatusOK).
-    End()
+	NewTest(app).
+		Post("/lists").
+		Header("Content-Type", "application/json").
+		Body(`{}`).
+		Expect(t).
+		Body(`{"id": "fakeid1", "todo_chunk": "fakeid1"}`).
+		Status(http.StatusOK).
+		End()
+
+	NewTest(app).
+		Post("/todos").
+		Header("Content-Type", "application/json").
+		Body(`{"title": "something", "list_id": "fakeid1"}`).
+		Expect(t).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Get("/todos").
+		Expect(t).
+		Body(`["fakeid1"]`).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Get("/todos/fakeid1").
+		Expect(t).
+		Body(`{"id": "fakeid1", "title": "something", "list_id": "fakeid1"}`).
+		Status(http.StatusOK).
+		End()
 }
 
 func NewTest(app *fiber.App) *apitest.APITest {
-  return apitest.New().
-                 Handler(FiberToHandlerFunc(app))
+	return apitest.New().
+		Handler(FiberToHandlerFunc(app))
 }
 
 func FiberToHandlerFunc(app *fiber.App) http.HandlerFunc {

@@ -29,6 +29,7 @@ func newApp() *fiber.App {
 	app.Get("/todos", tlist.GetAll)
 	app.Get("/todos/:id", tlist.GetById)
 	app.Post("/todos", tlist.AddTodo)
+	app.Post("/lists", tlist.NewList)
 	return app
 }
 
