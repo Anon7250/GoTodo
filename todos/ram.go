@@ -12,6 +12,11 @@ func NewRAMTodoList() (*TodoList, error) {
 	return &TodoList{db: &ramlist}, nil
 }
 
+func (todo *RAMTodoDB) HasKey(key string) (bool, error) {
+	_, ok := (*todo)[key]
+	return ok, nil
+}
+
 func (todo *RAMTodoDB) GetJson(key string) ([]byte, error) {
 	ans, ok := (*todo)[key]
 	if !ok {

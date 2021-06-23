@@ -28,6 +28,10 @@ func NewDynDBTodoList() (*TodoList, error) {
 	return &TodoList{db: &impl}, nil
 }
 
+func (todo *DynDBTodoDB) HasKey(key string) (bool, error) {
+	return false, nil
+}
+
 // TODO: This is very expensive for AWS. Get rid of it
 func (todo *DynDBTodoDB) ListJsons(keyPrefix string) ([][]byte, error) {
 	var table = "GoTodo1"

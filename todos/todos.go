@@ -14,6 +14,7 @@ type TodoItem struct {
 }
 
 type KeyValueDB interface {
+	HasKey(key string) (bool, error)
 	SetJson(key string, json []byte) error
 	GetJson(key string) ([]byte, error)
 
@@ -65,12 +66,11 @@ func (todo *TodoList) AddTodo(c *fiber.Ctx) error {
 		return err
 	}
 
-	newUUID, err := GetUUID()
+	newId, err := todo.newKey("")
 	if err != nil {
 		return err
 	}
-
-	item.Id = newUUID
+	item.Id = newId
 	fmt.Println("Adding item: ", item)
 
 	jsonVal, err := json.Marshal(item)
@@ -78,6 +78,25 @@ func (todo *TodoList) AddTodo(c *fiber.Ctx) error {
 		return err
 	}
 	return todo.db.SetJson("/todo/"+item.Id, jsonVal)
+}
+
+func (todo *TodoList) newKey(keyPrefix string) (string, error) {
+	var key string
+	for {
+		newUUID, err := GetUUID()
+		if err != nil {
+			return "", err
+		}
+		key = keyPrefix + newUUID
+		duplicate, err := todo.db.HasKey(key)
+		if err != nil {
+			return "", err
+		}
+		if !duplicate {
+			break
+		}
+	}
+	return key, nil
 }
 
 var GetUUID = GetUUIDImpl
