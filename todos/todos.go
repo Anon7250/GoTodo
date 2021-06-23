@@ -22,11 +22,11 @@ type KeyValueDB interface {
 	ListJsons(keyPrefix string) ([][]byte, error)
 }
 
-type TodoList struct {
+type TodoListAPI struct {
 	db KeyValueDB
 }
 
-func (todo *TodoList) GetAll(c *fiber.Ctx) error {
+func (todo *TodoListAPI) GetAll(c *fiber.Ctx) error {
 	ans, err := todo.db.ListJsons("/todo/")
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (todo *TodoList) GetAll(c *fiber.Ctx) error {
 	return c.JSON(todoItems)
 }
 
-func (todo *TodoList) GetById(c *fiber.Ctx) error {
+func (todo *TodoListAPI) GetById(c *fiber.Ctx) error {
 	id := c.Params("id")
 	ans, err := todo.db.GetJson("/todo/" + id)
 	if err != nil {
@@ -58,7 +58,7 @@ func (todo *TodoList) GetById(c *fiber.Ctx) error {
 	return c.JSON(todoItem)
 }
 
-func (todo *TodoList) AddTodo(c *fiber.Ctx) error {
+func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {
 	fmt.Println("Parsing item...")
 
 	item := new(TodoItem)
@@ -80,7 +80,7 @@ func (todo *TodoList) AddTodo(c *fiber.Ctx) error {
 	return todo.db.SetJson("/todo/"+item.Id, jsonVal)
 }
 
-func (todo *TodoList) newKey(keyPrefix string) (string, error) {
+func (todo *TodoListAPI) newKey(keyPrefix string) (string, error) {
 	var key string
 	for {
 		newUUID, err := GetUUID()

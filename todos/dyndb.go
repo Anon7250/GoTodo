@@ -16,7 +16,7 @@ type DynDBTodoDB struct {
 	DB        *dynamodb.Client
 }
 
-func NewDynDBTodoList() (*TodoList, error) {
+func NewDynDBTodoList() (*TodoListAPI, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return nil, err
@@ -25,7 +25,7 @@ func NewDynDBTodoList() (*TodoList, error) {
 	db := dynamodb.NewFromConfig(cfg)
 
 	impl := DynDBTodoDB{&cfg, db}
-	return &TodoList{db: &impl}, nil
+	return &TodoListAPI{db: &impl}, nil
 }
 
 func (todo *DynDBTodoDB) HasKey(key string) (bool, error) {

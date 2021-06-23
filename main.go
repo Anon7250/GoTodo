@@ -10,7 +10,7 @@ import (
 
 const ENV_VAR_TODO_MODE = "GOTODO_MODE"
 
-func newTodo(mode string) (*todos.TodoList, error) {
+func newTodo(mode string) (*todos.TodoListAPI, error) {
 	switch mode {
 	case "dyndb":
 		log.Printf("Using AWS DynamoDB")

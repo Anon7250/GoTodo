@@ -7,9 +7,9 @@ import (
 
 type RAMTodoDB map[string][]byte
 
-func NewRAMTodoList() (*TodoList, error) {
+func NewRAMTodoList() (*TodoListAPI, error) {
 	ramlist := make(RAMTodoDB, 0)
-	return &TodoList{db: &ramlist}, nil
+	return &TodoListAPI{db: &ramlist}, nil
 }
 
 func (todo *RAMTodoDB) HasKey(key string) (bool, error) {
