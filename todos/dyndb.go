@@ -3,6 +3,7 @@ package todos
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -33,7 +34,7 @@ func (todo *DynDBTodoDB) HasKey(key string) (bool, error) {
 }
 
 // TODO: This is very expensive for AWS. Get rid of it
-func (todo *DynDBTodoDB) ListJsons(keyPrefix string) ([][]byte, error) {
+func (todo *DynDBTodoDB) ListJsons(keyPrefix string, valuesOut interface{}) error {
 	var table = "GoTodo1"
 	var projectExpr = "id"
 	scanInput := dynamodb.ScanInput{
@@ -42,17 +43,17 @@ func (todo *DynDBTodoDB) ListJsons(keyPrefix string) ([][]byte, error) {
 	}
 	output, err := todo.DB.Scan(context.TODO(), &scanInput)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	log.Printf("AWS Scanned %d items and returned %d", output.ScannedCount, output.Count)
 
-	return nil, nil
+	return json.Unmarshal([]byte("[]"), valuesOut)
 }
 
-func (todo *DynDBTodoDB) GetJson(key string) ([]byte, error) {
-	return nil, fiber.NewError(fiber.StatusNotFound)
+func (todo *DynDBTodoDB) GetJson(key string, valueOut interface{}) error {
+	return fiber.NewError(fiber.StatusNotFound)
 }
 
-func (todo *DynDBTodoDB) SetJson(key string, json []byte) error {
+func (todo *DynDBTodoDB) SetJson(key string, value interface{}) error {
 	return nil
 }

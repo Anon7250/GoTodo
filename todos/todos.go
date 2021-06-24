@@ -1,7 +1,6 @@
 package todos
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,11 +14,11 @@ type TodoItem struct {
 
 type KeyValueDB interface {
 	HasKey(key string) (bool, error)
-	SetJson(key string, json []byte) error
-	GetJson(key string) ([]byte, error)
+	SetJson(key string, value interface{}) error
+	GetJson(key string, valueOut interface{}) error
 
 	// TODO: This is very expensive for AWS. Get rid of it
-	ListJsons(keyPrefix string) ([][]byte, error)
+	ListJsons(keyPrefix string, valuesOut interface{}) error
 }
 
 type TodoListAPI struct {
@@ -27,31 +26,23 @@ type TodoListAPI struct {
 }
 
 func (todo *TodoListAPI) GetAll(c *fiber.Ctx) error {
-	ans, err := todo.db.ListJsons("/todo/")
+	var todoItems []TodoItem
+	err := todo.db.ListJsons("/todo/", &todoItems)
 	if err != nil {
 		return err
 	}
 
-	var todoItems = make([]string, 0)
-	for _, rawJson := range ans {
-		var todoItem TodoItem
-		err := json.Unmarshal(rawJson, &todoItem)
-		if err != nil {
-			return err
-		}
-		todoItems = append(todoItems, todoItem.Id)
+	todoIds := make([]string, 0)
+	for _, todoItem := range todoItems {
+		todoIds = append(todoIds, todoItem.Id)
 	}
-	return c.JSON(todoItems)
+	return c.JSON(todoIds)
 }
 
 func (todo *TodoListAPI) GetById(c *fiber.Ctx) error {
 	id := c.Params("id")
-	ans, err := todo.db.GetJson("/todo/" + id)
-	if err != nil {
-		return err
-	}
 	var todoItem TodoItem
-	err = json.Unmarshal(ans, &todoItem)
+	err := todo.db.GetJson("/todo/"+id, &todoItem)
 	if err != nil {
 		return err
 	}
@@ -72,12 +63,7 @@ func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {
 	}
 	item.Id = newId
 	fmt.Println("Adding item: ", item)
-
-	jsonVal, err := json.Marshal(item)
-	if err != nil {
-		return err
-	}
-	return todo.db.SetJson("/todo/"+item.Id, jsonVal)
+	return todo.db.SetJson("/todo/"+item.Id, item)
 }
 
 func (todo *TodoListAPI) newKey(keyPrefix string) (string, error) {
