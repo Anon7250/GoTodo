@@ -3,8 +3,6 @@ package todos
 
 import (
 	"context"
-	"encoding/json"
-	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -31,23 +29,6 @@ func NewDynDBTodoList() (*TodoListAPI, error) {
 
 func (todo *DynDBTodoDB) HasKey(key string) (bool, error) {
 	return false, nil
-}
-
-// TODO: This is very expensive for AWS. Get rid of it
-func (todo *DynDBTodoDB) ListJsons(keyPrefix string, valuesOut interface{}) error {
-	var table = "GoTodo1"
-	var projectExpr = "id"
-	scanInput := dynamodb.ScanInput{
-		TableName:            &table,
-		ProjectionExpression: &projectExpr,
-	}
-	output, err := todo.DB.Scan(context.TODO(), &scanInput)
-	if err != nil {
-		return err
-	}
-	log.Printf("AWS Scanned %d items and returned %d", output.ScannedCount, output.Count)
-
-	return json.Unmarshal([]byte("[]"), valuesOut)
 }
 
 func (todo *DynDBTodoDB) GetJson(key string, valueOut interface{}) error {

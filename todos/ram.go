@@ -1,12 +1,11 @@
 package todos
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
 	"sync"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type RAMTodoDB struct {
@@ -33,7 +32,7 @@ func (todo *RAMTodoDB) GetJson(key string, valueOut interface{}) error {
 
 	ans, ok := todo.data.Load(key)
 	if !ok {
-		return errors.New("Invalid DB key: " + key)
+		return fiber.NewError(fiber.StatusNotFound, "No such DB key: "+key)
 	}
 
 	ansBytes, ok := ans.([]byte)
@@ -72,24 +71,6 @@ func (todo *RAMTodoDB) TransactSetJsons(writes map[string]interface{}, condition
 		todo.data.Store(key, rawJson)
 	}
 	return nil
-}
-
-func (todo *RAMTodoDB) ListJsons(keyPrefix string, valuesOut interface{}) error {
-	var ans [][]byte
-	todo.data.Range(func(key, value interface{}) bool {
-		if !strings.HasPrefix(key.(string), keyPrefix) {
-			return true
-		}
-		ans = append(ans, value.([]byte))
-		return true
-	})
-	rawJsonBuilder := [][]byte{
-		[]byte("["),
-		bytes.Join(ans, []byte(",")),
-		[]byte("]"),
-	}
-	rawJson := bytes.Join(rawJsonBuilder, []byte(""))
-	return json.Unmarshal(rawJson, valuesOut)
 }
 
 func (todo *RAMTodoDB) lock(key string) {

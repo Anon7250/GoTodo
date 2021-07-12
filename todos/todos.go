@@ -32,7 +32,6 @@ type KeyValueDB interface {
 	TransactSetJsons(writes map[string]interface{}, conditions map[string]interface{}) error
 
 	// TODO: This is very expensive for AWS. Get rid of it
-	ListJsons(keyPrefix string, valuesOut interface{}) error
 }
 
 type TodoListAPI struct {
@@ -66,21 +65,24 @@ func (todo *TodoListAPI) NewList(c *fiber.Ctx) error {
 	return c.JSON(list)
 }
 
-func (todo *TodoListAPI) GetAll(c *fiber.Ctx) error {
-	var todoItems []TodoItem
-	err := todo.db.ListJsons("/todo/", &todoItems)
+func (todo *TodoListAPI) GetListItems(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var todoList TodoList
+	var todoChunk TodoChunk
+	err := todo.db.GetJson("/list/"+id, &todoList)
 	if err != nil {
 		return err
 	}
 
-	todoIds := make([]string, 0)
-	for _, todoItem := range todoItems {
-		todoIds = append(todoIds, todoItem.Id)
+	// TODO: return more than just the first chunk
+	err = todo.db.GetJson("/todo_chunk/"+todoList.TodoChunk, &todoChunk)
+	if err != nil {
+		return err
 	}
-	return c.JSON(todoIds)
+	return c.JSON(todoChunk.Todos)
 }
 
-func (todo *TodoListAPI) GetById(c *fiber.Ctx) error {
+func (todo *TodoListAPI) GetTodo(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var todoItem TodoItem
 	err := todo.db.GetJson("/todo/"+id, &todoItem)
@@ -136,7 +138,12 @@ func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {
 	}
 	todoChunk.Todos = append(todoChunk.Todos, item.Id)
 
+	// TODO: Don't always add to the first chunk in the list
 	return todo.db.SetJson("/todo_chunk/"+todoList.TodoChunk, &todoChunk)
+}
+
+func (todo *TodoListAPI) HealthCheck(c *fiber.Ctx) error {
+	return c.JSON("ok")
 }
 
 func (todo *TodoListAPI) newKeyAndId(keyPrefix string) (string, string, error) {

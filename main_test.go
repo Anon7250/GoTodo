@@ -12,12 +12,11 @@ import (
 	"github.com/steinfletcher/apitest"
 )
 
-func TestGetAllTodosInitialValue(t *testing.T) {
+func TestGetTodosFromInvalidList(t *testing.T) {
 	NewTest(newApp()).
-		Get("/todos").
+		Get("/list/bad_id").
 		Expect(t).
-		Body(`[]`).
-		Status(http.StatusOK).
+		Status(http.StatusNotFound).
 		End()
 }
 
@@ -84,7 +83,7 @@ func TestAddTodoAndGetAll(t *testing.T) {
 		Status(http.StatusOK).
 		End()
 	NewTest(app).
-		Get("/todos").
+		Get("/list/fakeid1").
 		Expect(t).
 		Body(`["fakeid1"]`).
 		Status(http.StatusOK).
