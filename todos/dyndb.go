@@ -39,6 +39,10 @@ func (todo *DynDBTodoDB) SetJson(key string, value interface{}) error {
 	return nil
 }
 
-func (todo *DynDBTodoDB) TransactSetJsons(writes map[string]interface{}, conditions map[string]interface{}) error {
+func (todo *DynDBTodoDB) GetStringList(key string, valueOut *[]string) error {
+	return nil
+}
+
+func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 	return nil
 }

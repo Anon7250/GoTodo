@@ -54,6 +54,7 @@ func TestAddTodoOk(t *testing.T) {
 		Header("Content-Type", "application/json").
 		Body(`{"title": "something", "list_id": "` + list.Id + `"}`).
 		Expect(t).
+		Body("").
 		Status(http.StatusOK).
 		End()
 }

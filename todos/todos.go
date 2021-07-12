@@ -23,15 +23,22 @@ type TodoChunk struct {
 	Next  string   `json:"next"`
 }
 
+type WriteTransaction struct {
+	// Create json items that must not already exist
+	creates map[string]interface{}
+
+	// Append strings to lists of strings
+	strListAppends map[string][]string
+
+	// Create empty lists of strings
+	strListCreates []string
+}
+
 type KeyValueDB interface {
 	HasKey(key string) (bool, error)
-	SetJson(key string, value interface{}) error
 	GetJson(key string, valueOut interface{}) error
-
-	// Transaction only goes through if values in conditions didn't change
-	TransactSetJsons(writes map[string]interface{}, conditions map[string]interface{}) error
-
-	// TODO: This is very expensive for AWS. Get rid of it
+	GetStringList(key string, valueOut *[]string) error
+	DoWriteTransaction(transaction WriteTransaction) error
 }
 
 type TodoListAPI struct {
@@ -52,34 +59,42 @@ func (todo *TodoListAPI) NewList(c *fiber.Ctx) error {
 	chunk := TodoChunk{nil, ""}
 	list := TodoList{list_id, chunk_id}
 
-	err = todo.db.SetJson(chunk_key, chunk)
+	err = todo.db.DoWriteTransaction(
+		WriteTransaction{
+			creates: map[string]interface{}{
+				chunk_key: chunk,
+				list_key:  list,
+			},
+			strListCreates: []string{chunk_key, list_key},
+		},
+	)
 	if err != nil {
 		return err
 	}
-	err = todo.db.SetJson(list_key, list)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Adding List: ", list_key, list)
 	return c.JSON(list)
 }
 
 func (todo *TodoListAPI) GetListItems(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var todoList TodoList
-	var todoChunk TodoChunk
+	var todoListItems []string
+	var todoChunkItems []string
 	err := todo.db.GetJson("/list/"+id, &todoList)
 	if err != nil {
 		return err
 	}
 
-	// TODO: return more than just the first chunk
-	err = todo.db.GetJson("/todo_chunk/"+todoList.TodoChunk, &todoChunk)
+	err = todo.db.GetStringList("/list/"+id, &todoListItems)
 	if err != nil {
 		return err
 	}
-	return c.JSON(todoChunk.Todos)
+
+	// TODO: return more than just the first chunk
+	err = todo.db.GetStringList("/todo_chunk/"+todoList.TodoChunk, &todoChunkItems)
+	if err != nil {
+		return err
+	}
+	return c.JSON(todoChunkItems)
 }
 
 func (todo *TodoListAPI) GetTodo(c *fiber.Ctx) error {
@@ -120,26 +135,24 @@ func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusForbidden, "Non existent todo list: "+item.ListId)
 	}
 
-	err = todo.db.SetJson(todoKey, item)
-	if err != nil {
-		return err
-	}
-
 	var todoList TodoList
 	err = todo.db.GetJson("/list/"+item.ListId, &todoList)
 	if err != nil {
 		return err
 	}
 
-	var todoChunk TodoChunk
-	err = todo.db.GetJson("/todo_chunk/"+todoList.TodoChunk, &todoChunk)
-	if err != nil {
-		return err
-	}
-	todoChunk.Todos = append(todoChunk.Todos, item.Id)
-
 	// TODO: Don't always add to the first chunk in the list
-	return todo.db.SetJson("/todo_chunk/"+todoList.TodoChunk, &todoChunk)
+	chunkKey := "/todo_chunk/" + todoList.TodoChunk
+	return todo.db.DoWriteTransaction(
+		WriteTransaction{
+			creates: map[string]interface{}{
+				todoKey: item,
+			},
+			strListAppends: map[string][]string{
+				chunkKey: {item.Id},
+			},
+		},
+	)
 }
 
 func (todo *TodoListAPI) HealthCheck(c *fiber.Ctx) error {
