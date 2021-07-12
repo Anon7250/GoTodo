@@ -28,6 +28,9 @@ type KeyValueDB interface {
 	SetJson(key string, value interface{}) error
 	GetJson(key string, valueOut interface{}) error
 
+	// Transaction only goes through if values in conditions didn't change
+	TransactSetJsons(writes map[string]interface{}, conditions map[string]interface{}) error
+
 	// TODO: This is very expensive for AWS. Get rid of it
 	ListJsons(keyPrefix string, valuesOut interface{}) error
 }

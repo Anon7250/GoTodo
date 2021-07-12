@@ -57,3 +57,7 @@ func (todo *DynDBTodoDB) GetJson(key string, valueOut interface{}) error {
 func (todo *DynDBTodoDB) SetJson(key string, value interface{}) error {
 	return nil
 }
+
+func (todo *DynDBTodoDB) TransactSetJsons(writes map[string]interface{}, conditions map[string]interface{}) error {
+	return nil
+}
