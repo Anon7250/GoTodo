@@ -160,21 +160,9 @@ func (todo *TodoListAPI) HealthCheck(c *fiber.Ctx) error {
 }
 
 func (todo *TodoListAPI) newKeyAndId(keyPrefix string) (string, string, error) {
-	var err error
-	var newUUID string
-	for {
-		newUUID, err = GetUUID()
-		if err != nil {
-			return "", "", err
-		}
-		key := keyPrefix + newUUID
-		duplicate, err := todo.db.HasKey(key)
-		if err != nil {
-			return "", "", err
-		}
-		if !duplicate {
-			break
-		}
+	newUUID, err := GetUUID()
+	if err != nil {
+		return "", "", err
 	}
 	return keyPrefix + newUUID, newUUID, nil
 }

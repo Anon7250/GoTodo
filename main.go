@@ -9,19 +9,20 @@ import (
 )
 
 const ENV_VAR_TODO_MODE = "GOTODO_MODE"
+const ENV_VAR_DYNDB_TABLE = "GOTODO_DYNDB_TABLE"
 
-func newTodo(mode string) (*todos.TodoListAPI, error) {
+func newTodo(mode string, table string) (*todos.TodoListAPI, error) {
 	switch mode {
 	case "dyndb":
-		log.Printf("Using AWS DynamoDB")
-		return todos.NewDynDBTodoList()
+		log.Printf("Using AWS DynamoDB " + table)
+		return todos.NewDynDBTodoList(table)
 	default:
 		return todos.NewRAMTodoList()
 	}
 }
 
 func newApp() *fiber.App {
-	tlist, err := newTodo(os.Getenv(ENV_VAR_TODO_MODE))
+	tlist, err := newTodo(os.Getenv(ENV_VAR_TODO_MODE), os.Getenv(ENV_VAR_DYNDB_TABLE))
 	if err != nil {
 		log.Fatal(err)
 	}
