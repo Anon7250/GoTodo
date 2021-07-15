@@ -30,6 +30,7 @@ func newApp() *fiber.App {
 	app.Get("/list/:id", tlist.GetList)
 	app.Get("/list/:id/items", tlist.GetListItems)
 	app.Get("/todos/:id", tlist.GetTodo)
+	app.Post("/todos/:id/done", tlist.SetTodoDone)
 	app.Post("/todos", tlist.AddTodo)
 	app.Post("/lists", tlist.NewList)
 	app.Get("/healthcheck", tlist.HealthCheck)

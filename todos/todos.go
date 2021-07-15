@@ -8,6 +8,7 @@ import (
 )
 
 type TodoItem struct {
+	Done   bool   `json:"done"`
 	Id     string `json:"id"`
 	Title  string `json:"title"`
 	ListId string `json:"list_id"`
@@ -27,6 +28,9 @@ type TodoChunk struct {
 type WriteTransaction struct {
 	// Create json items that must not already exist
 	creates map[string]interface{}
+
+	// Overwrite a json item entirely
+	overwrites map[string]interface{}
 
 	// Append strings to lists of strings
 	strListAppends map[string][]string
@@ -123,6 +127,33 @@ func (todo *TodoListAPI) GetTodo(c *fiber.Ctx) error {
 		return err
 	}
 	return c.JSON(todoItem)
+}
+
+func (todo *TodoListAPI) SetTodoDone(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var done bool
+
+	err := c.BodyParser(&done)
+	if err != nil {
+		return err
+	}
+
+	var todoItem TodoItem
+	err = todo.db.GetJson("/todo/"+id, &todoItem)
+	if err != nil {
+		return err
+	}
+	todoItem.Done = done
+
+	err = todo.db.DoWriteTransaction(WriteTransaction{
+		overwrites: map[string]interface{}{
+			"/todo/" + id: todoItem,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return c.JSON(map[string]string{})
 }
 
 func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {

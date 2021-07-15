@@ -64,7 +64,7 @@ func TestAddTodoOk(t *testing.T) {
 		End()
 }
 
-func TestAddTodoAndGetAll(t *testing.T) {
+func TestOneTodoListWithOneTodo(t *testing.T) {
 	app := newApp()
 
 	stubs := gostub.Stub(&todos.GetUUID, func() (string, error) {
@@ -72,6 +72,7 @@ func TestAddTodoAndGetAll(t *testing.T) {
 	})
 	defer stubs.Reset()
 
+	// Create a todo list
 	NewTest(app).
 		Post("/lists").
 		Header("Content-Type", "application/json").
@@ -81,6 +82,7 @@ func TestAddTodoAndGetAll(t *testing.T) {
 		Status(http.StatusOK).
 		End()
 
+	// Create a todo item
 	NewTest(app).
 		Post("/todos").
 		Header("Content-Type", "application/json").
@@ -88,6 +90,8 @@ func TestAddTodoAndGetAll(t *testing.T) {
 		Expect(t).
 		Status(http.StatusOK).
 		End()
+
+	// Test all features of the todo list and the todo item
 	NewTest(app).
 		Get("/list/fakeid1").
 		Expect(t).
@@ -103,7 +107,21 @@ func TestAddTodoAndGetAll(t *testing.T) {
 	NewTest(app).
 		Get("/todos/fakeid1").
 		Expect(t).
-		Body(`{"id": "fakeid1", "title": "something", "list_id": "fakeid1"}`).
+		Body(`{"done": false, "id": "fakeid1", "title": "something", "list_id": "fakeid1"}`).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Post("/todos/fakeid1/done").
+		Header("Content-Type", "application/json").
+		Body(`true`).
+		Expect(t).
+		Status(http.StatusOK).
+		Body(`{}`).
+		End()
+	NewTest(app).
+		Get("/todos/fakeid1").
+		Expect(t).
+		Body(`{"done": true, "id": "fakeid1", "title": "something", "list_id": "fakeid1"}`).
 		Status(http.StatusOK).
 		End()
 }

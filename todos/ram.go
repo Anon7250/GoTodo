@@ -91,6 +91,15 @@ func (todo *RAMTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		defer todo.unlock(key)
 		locked_map[key] = true
 	}
+	for key := range t.overwrites {
+		_, locked := locked_map[key]
+		if locked {
+			continue
+		}
+		todo.lock(key)
+		defer todo.unlock(key)
+		locked_map[key] = true
+	}
 	for key := range t.strListAppends {
 		_, locked := locked_map[key]
 		if locked {
@@ -142,6 +151,13 @@ func (todo *RAMTodoDB) DoWriteTransaction(t WriteTransaction) error {
 	}
 
 	for key, obj := range t.creates {
+		rawJson, err := json.Marshal(obj)
+		if err != nil {
+			return err
+		}
+		todo.jsons.Store(key, rawJson)
+	}
+	for key, obj := range t.overwrites {
 		rawJson, err := json.Marshal(obj)
 		if err != nil {
 			return err

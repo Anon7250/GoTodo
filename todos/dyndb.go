@@ -128,6 +128,7 @@ func (todo *DynDBTodoDB) GetStringList(key string, valueOut *[]string) error {
 	return nil
 }
 
+// TODO: Improve this with https://docs.aws.amazon.com/sdk-for-go/api/service/dynamodb/dynamodbattribute/
 func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 	errMsg := "Failed to write to database: "
 	uuidStr, err := GetUUIDImpl()
@@ -171,6 +172,23 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 				Item:                     values,
 				TableName:                aws.String(todo.Table),
 				ConditionExpression:      aws.String(ConditionKeyDoesntExist),
+			},
+		}
+		transactions = append(transactions, item)
+	}
+	for key, setJson := range t.overwrites {
+		rawJson, err := json.Marshal(setJson)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
+		}
+		item := dyndbTypes.TransactWriteItem{
+			Put: &dyndbTypes.Put{
+				ExpressionAttributeNames: map[string]string{RenameTableKey: TableKey},
+				Item: map[string]dyndbTypes.AttributeValue{
+					TableKey:       &dyndbTypes.AttributeValueMemberS{Value: key},
+					TableJsonField: &dyndbTypes.AttributeValueMemberB{Value: rawJson},
+				},
+				TableName: aws.String(todo.Table),
 			},
 		}
 		transactions = append(transactions, item)
