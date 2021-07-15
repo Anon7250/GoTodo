@@ -20,7 +20,7 @@ const TableStrListField = "strList"
 const StrListCreatedMarker = "<CREATED>"
 const ConditionKeyDoesntExist = "attribute_not_exists(#key)"
 const ConditionKeyExists = "attribute_exists(#key)"
-const AppendToStrListExpr = "ADD strList :AppendItems"
+const AppendToStrListExpr = "SET strList = list_append(strList, :AppendItems)"
 const RenameNewItems = ":AppendItems"
 const RenameTableKey = "#key"
 const RequestTokenSize = 36
@@ -108,13 +108,18 @@ func (todo *DynDBTodoDB) GetStringList(key string, valueOut *[]string) error {
 		return fiber.NewError(fiber.StatusInternalServerError, errMsg)
 	}
 
-	strList, ok := rawStrList.(*dyndbTypes.AttributeValueMemberSS)
+	strList, ok := rawStrList.(*dyndbTypes.AttributeValueMemberL)
 	if !ok {
 		return fiber.NewError(fiber.StatusInternalServerError, errMsg)
 	}
 
 	*valueOut = nil
-	for _, val := range strList.Value {
+	for _, rawValue := range strList.Value {
+		rawStrValue, ok := rawValue.(*dyndbTypes.AttributeValueMemberS)
+		if !ok {
+			return fiber.NewError(fiber.StatusInternalServerError, errMsg)
+		}
+		val := rawStrValue.Value
 		if val == StrListCreatedMarker {
 			continue
 		}
@@ -154,7 +159,11 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 			values[TableJsonField] = &dyndbTypes.AttributeValueMemberB{Value: rawJson}
 		}
 		if createStrList {
-			values[TableStrListField] = &dyndbTypes.AttributeValueMemberSS{Value: []string{StrListCreatedMarker}}
+			values[TableStrListField] = &dyndbTypes.AttributeValueMemberL{
+				Value: []dyndbTypes.AttributeValue{
+					&dyndbTypes.AttributeValueMemberS{Value: StrListCreatedMarker},
+				},
+			}
 		}
 		item := dyndbTypes.TransactWriteItem{
 			Put: &dyndbTypes.Put{
@@ -166,12 +175,20 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		}
 		transactions = append(transactions, item)
 	}
-	for key, vals := range t.strListAppends {
+	for key, strs := range t.strListAppends {
+		vals := make([]dyndbTypes.AttributeValue, 0)
+		for _, str := range strs {
+			vals = append(vals, &dyndbTypes.AttributeValueMemberS{
+				Value: str,
+			})
+		}
 		item := dyndbTypes.TransactWriteItem{
 			Update: &dyndbTypes.Update{
 				ExpressionAttributeNames: map[string]string{RenameTableKey: TableKey},
 				ExpressionAttributeValues: map[string]dyndbTypes.AttributeValue{
-					RenameNewItems: &dyndbTypes.AttributeValueMemberSS{Value: vals},
+					RenameNewItems: &dyndbTypes.AttributeValueMemberL{
+						Value: vals,
+					},
 				},
 				Key: map[string]dyndbTypes.AttributeValue{
 					TableKey: &dyndbTypes.AttributeValueMemberS{Value: key},
