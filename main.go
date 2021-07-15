@@ -27,7 +27,8 @@ func newApp() *fiber.App {
 		log.Fatal(err)
 	}
 	app := fiber.New()
-	app.Get("/list/:id", tlist.GetListItems)
+	app.Get("/list/:id", tlist.GetList)
+	app.Get("/list/:id/items", tlist.GetListItems)
 	app.Get("/todos/:id", tlist.GetTodo)
 	app.Post("/todos", tlist.AddTodo)
 	app.Post("/lists", tlist.NewList)

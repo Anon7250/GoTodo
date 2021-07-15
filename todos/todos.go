@@ -15,7 +15,8 @@ type TodoItem struct {
 
 type TodoList struct {
 	Id        string `json:"id"`
-	TodoChunk string `json:"todo_chunk"`
+	Name      string `json:"name"`
+	TodoChunk string `json:"todo_chunk,omitempty"`
 }
 
 type TodoChunk struct {
@@ -46,6 +47,13 @@ type TodoListAPI struct {
 }
 
 func (todo *TodoListAPI) NewList(c *fiber.Ctx) error {
+	fmt.Println("Parsing new list...")
+
+	inputList := new(TodoList)
+	if err := c.BodyParser(inputList); err != nil {
+		return err
+	}
+
 	chunk_key, chunk_id, err := todo.newKeyAndId("/todo_chunk/")
 	if err != nil {
 		return err
@@ -57,7 +65,7 @@ func (todo *TodoListAPI) NewList(c *fiber.Ctx) error {
 	}
 
 	chunk := TodoChunk{nil, ""}
-	list := TodoList{list_id, chunk_id}
+	list := TodoList{list_id, inputList.Name, chunk_id}
 
 	err = todo.db.DoWriteTransaction(
 		WriteTransaction{
@@ -71,7 +79,17 @@ func (todo *TodoListAPI) NewList(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(list)
+	return todo.respondWithList(c, list)
+}
+
+func (todo *TodoListAPI) GetList(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var todoList TodoList
+	err := todo.db.GetJson("/list/"+id, &todoList)
+	if err != nil {
+		return err
+	}
+	return todo.respondWithList(c, todoList)
 }
 
 func (todo *TodoListAPI) GetListItems(c *fiber.Ctx) error {
@@ -165,6 +183,11 @@ func (todo *TodoListAPI) newKeyAndId(keyPrefix string) (string, string, error) {
 		return "", "", err
 	}
 	return keyPrefix + newUUID, newUUID, nil
+}
+
+func (todo *TodoListAPI) respondWithList(c *fiber.Ctx, list TodoList) error {
+	list.TodoChunk = "" // Do not expose internal implementation details
+	return c.JSON(list)
 }
 
 var GetUUID = GetUUIDImpl

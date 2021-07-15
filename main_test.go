@@ -18,6 +18,11 @@ func TestGetTodosFromInvalidList(t *testing.T) {
 		Expect(t).
 		Status(http.StatusNotFound).
 		End()
+	NewTest(newApp()).
+		Get("/list/bad_id/items").
+		Expect(t).
+		Status(http.StatusNotFound).
+		End()
 }
 
 func TestAddTodoWithoutListForbidden(t *testing.T) {
@@ -70,9 +75,9 @@ func TestAddTodoAndGetAll(t *testing.T) {
 	NewTest(app).
 		Post("/lists").
 		Header("Content-Type", "application/json").
-		Body(`{}`).
+		Body(`{"name": "test123"}`).
 		Expect(t).
-		Body(`{"id": "fakeid1", "todo_chunk": "fakeid1"}`).
+		Body(`{"id": "fakeid1", "name": "test123"}`).
 		Status(http.StatusOK).
 		End()
 
@@ -85,6 +90,12 @@ func TestAddTodoAndGetAll(t *testing.T) {
 		End()
 	NewTest(app).
 		Get("/list/fakeid1").
+		Expect(t).
+		Body(`{"id": "fakeid1", "name": "test123"}`).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Get("/list/fakeid1/items").
 		Expect(t).
 		Body(`["fakeid1"]`).
 		Status(http.StatusOK).
