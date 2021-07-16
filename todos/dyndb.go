@@ -3,11 +3,11 @@ package todos
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	dyndb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dyndbTypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/gofiber/fiber/v2"
@@ -81,12 +81,7 @@ func (todo *DynDBTodoDB) GetJson(key string, valueOut interface{}) error {
 		return fiber.NewError(fiber.StatusInternalServerError, errMsg)
 	}
 
-	bytesArray, ok := rawJson.(*dyndbTypes.AttributeValueMemberB)
-	if !ok {
-		return fiber.NewError(fiber.StatusInternalServerError, errMsg)
-	}
-
-	err = json.Unmarshal(bytesArray.Value, valueOut)
+	err = attributevalue.Unmarshal(rawJson, valueOut)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
 	}
@@ -108,27 +103,13 @@ func (todo *DynDBTodoDB) GetStringList(key string, valueOut *[]string) error {
 		return fiber.NewError(fiber.StatusInternalServerError, errMsg)
 	}
 
-	strList, ok := rawStrList.(*dyndbTypes.AttributeValueMemberL)
-	if !ok {
+	err = attributevalue.Unmarshal(rawStrList, valueOut)
+	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, errMsg)
-	}
-
-	*valueOut = nil
-	for _, rawValue := range strList.Value {
-		rawStrValue, ok := rawValue.(*dyndbTypes.AttributeValueMemberS)
-		if !ok {
-			return fiber.NewError(fiber.StatusInternalServerError, errMsg)
-		}
-		val := rawStrValue.Value
-		if val == StrListCreatedMarker {
-			continue
-		}
-		*valueOut = append(*valueOut, val)
 	}
 	return nil
 }
 
-// TODO: Improve this with https://docs.aws.amazon.com/sdk-for-go/api/service/dynamodb/dynamodbattribute/
 func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 	errMsg := "Failed to write to database: "
 	uuidStr, err := GetUUIDImpl()
@@ -153,18 +134,18 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		setJson, hasSetJson := t.creates[key]
 		_, createStrList := createsStrLists[key]
 		if hasSetJson {
-			rawJson, err := json.Marshal(setJson)
+			rawJson, err := attributevalue.Marshal(setJson)
 			if err != nil {
 				return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
 			}
-			values[TableJsonField] = &dyndbTypes.AttributeValueMemberB{Value: rawJson}
+			values[TableJsonField] = rawJson
 		}
 		if createStrList {
-			values[TableStrListField] = &dyndbTypes.AttributeValueMemberL{
-				Value: []dyndbTypes.AttributeValue{
-					&dyndbTypes.AttributeValueMemberS{Value: StrListCreatedMarker},
-				},
+			rawJson, err := attributevalue.Marshal([]string{})
+			if err != nil {
+				return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
 			}
+			values[TableStrListField] = rawJson
 		}
 		item := dyndbTypes.TransactWriteItem{
 			Put: &dyndbTypes.Put{
@@ -177,7 +158,7 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		transactions = append(transactions, item)
 	}
 	for key, setJson := range t.overwrites {
-		rawJson, err := json.Marshal(setJson)
+		rawJson, err := attributevalue.Marshal(setJson)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
 		}
@@ -186,7 +167,7 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 				ExpressionAttributeNames: map[string]string{RenameTableKey: TableKey},
 				Item: map[string]dyndbTypes.AttributeValue{
 					TableKey:       &dyndbTypes.AttributeValueMemberS{Value: key},
-					TableJsonField: &dyndbTypes.AttributeValueMemberB{Value: rawJson},
+					TableJsonField: rawJson,
 				},
 				TableName: aws.String(todo.Table),
 			},
@@ -194,19 +175,15 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		transactions = append(transactions, item)
 	}
 	for key, strs := range t.strListAppends {
-		vals := make([]dyndbTypes.AttributeValue, 0)
-		for _, str := range strs {
-			vals = append(vals, &dyndbTypes.AttributeValueMemberS{
-				Value: str,
-			})
+		rawJson, err := attributevalue.Marshal(strs)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
 		}
 		item := dyndbTypes.TransactWriteItem{
 			Update: &dyndbTypes.Update{
 				ExpressionAttributeNames: map[string]string{RenameTableKey: TableKey},
 				ExpressionAttributeValues: map[string]dyndbTypes.AttributeValue{
-					RenameNewItems: &dyndbTypes.AttributeValueMemberL{
-						Value: vals,
-					},
+					RenameNewItems: rawJson,
 				},
 				Key: map[string]dyndbTypes.AttributeValue{
 					TableKey: &dyndbTypes.AttributeValueMemberS{Value: key},
