@@ -4,6 +4,7 @@ package todos
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -157,21 +158,32 @@ func (todo *DynDBTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		}
 		transactions = append(transactions, item)
 	}
-	for key, setJson := range t.overwrites {
-		rawJson, err := attributevalue.Marshal(setJson)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
+	for key, fields := range t.setFields {
+		values := map[string]dyndbTypes.AttributeValue{}
+		updateExpressions := make([]string, 0)
+		for fieldName, fieldValue := range fields {
+			rawJson, err := attributevalue.Marshal(fieldValue)
+			if err != nil {
+				return fiber.NewError(fiber.StatusInternalServerError, errMsg+err.Error())
+			}
+			values[":"+fieldName] = rawJson
+			update := TableJsonField + "." + fieldName + " = :" + fieldName
+			updateExpressions = append(updateExpressions, update)
 		}
+		updateExpression := "SET " + strings.Join(updateExpressions, ",")
 		item := dyndbTypes.TransactWriteItem{
-			Put: &dyndbTypes.Put{
-				ExpressionAttributeNames: map[string]string{RenameTableKey: TableKey},
-				Item: map[string]dyndbTypes.AttributeValue{
-					TableKey:       &dyndbTypes.AttributeValueMemberS{Value: key},
-					TableJsonField: rawJson,
+			Update: &dyndbTypes.Update{
+				ExpressionAttributeNames:  map[string]string{RenameTableKey: TableKey},
+				ExpressionAttributeValues: values,
+				TableName:                 aws.String(todo.Table),
+				ConditionExpression:       aws.String(ConditionKeyExists),
+				UpdateExpression:          aws.String(updateExpression),
+				Key: map[string]dyndbTypes.AttributeValue{
+					TableKey: &dyndbTypes.AttributeValueMemberS{Value: key},
 				},
-				TableName: aws.String(todo.Table),
 			},
 		}
+		fmt.Printf("Update: %#v", updateExpression)
 		transactions = append(transactions, item)
 	}
 	for key, strs := range t.strListAppends {

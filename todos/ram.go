@@ -91,7 +91,7 @@ func (todo *RAMTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		defer todo.unlock(key)
 		locked_map[key] = true
 	}
-	for key := range t.overwrites {
+	for key := range t.setFields {
 		_, locked := locked_map[key]
 		if locked {
 			continue
@@ -157,8 +157,26 @@ func (todo *RAMTodoDB) DoWriteTransaction(t WriteTransaction) error {
 		}
 		todo.jsons.Store(key, rawJson)
 	}
-	for key, obj := range t.overwrites {
-		rawJson, err := json.Marshal(obj)
+	for key, fields := range t.setFields {
+		rawJson, ok := todo.jsons.Load(key)
+		if !ok {
+			return fiber.NewError(
+				fiber.StatusInternalServerError,
+				fmt.Sprintf("Transanction failed: expecting item %v to exist, but it does not", key),
+			)
+		}
+		var rawMap map[string]interface{}
+		err := json.Unmarshal(rawJson.([]byte), &rawMap)
+		if err != nil {
+			return fiber.NewError(
+				fiber.StatusInternalServerError,
+				fmt.Sprintf("Transanction failed: expecting item %v to be a map, but it is not", key),
+			)
+		}
+		for fieldName, fieldVal := range fields {
+			rawMap[fieldName] = fieldVal
+		}
+		rawJson, err = json.Marshal(rawMap)
 		if err != nil {
 			return err
 		}
