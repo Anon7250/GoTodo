@@ -4,20 +4,19 @@ import (
 	"log"
 	"os"
 
-	"github.com/Anon7250/gotodo/todos"
 	"github.com/gofiber/fiber/v2"
 )
 
 const ENV_VAR_TODO_MODE = "GOTODO_MODE"
 const ENV_VAR_DYNDB_TABLE = "GOTODO_DYNDB_TABLE"
 
-func newTodo(mode string, table string) (*todos.TodoListAPI, error) {
+func newTodo(mode string, table string) (*TodoListAPI, error) {
 	switch mode {
 	case "dyndb":
 		log.Printf("Using AWS DynamoDB " + table)
-		return todos.NewDynDBTodoList(table)
+		return NewDynDBTodoList(table)
 	default:
-		return todos.NewRAMTodoList()
+		return NewRAMTodoList()
 	}
 }
 

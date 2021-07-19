@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Anon7250/gotodo/todos"
 	"github.com/gofiber/fiber/v2"
 	"github.com/prashantv/gostub"
 	"github.com/steinfletcher/apitest"
@@ -45,7 +44,7 @@ func TestAddTodoWithoutListForbidden(t *testing.T) {
 func TestAddTodoOk(t *testing.T) {
 	app := newApp()
 
-	var list todos.TodoList
+	var list TodoList
 	NewTest(app).
 		Post("/lists").
 		Header("Content-Type", "application/json").
@@ -67,7 +66,7 @@ func TestAddTodoOk(t *testing.T) {
 func TestOneTodoListWithOneTodo(t *testing.T) {
 	app := newApp()
 
-	stubs := gostub.Stub(&todos.GetUUID, func() (string, error) {
+	stubs := gostub.Stub(&GetUUID, func() (string, error) {
 		return "fakeid1", nil
 	})
 	defer stubs.Reset()

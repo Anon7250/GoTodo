@@ -1,11 +1,29 @@
-package todos
+package main
 
 import (
 	"fmt"
 
+	"github.com/Anon7250/gonorm"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
+
+const DefaultTableName = "GoTodo1"
+
+func NewDynDBTodoList(table string) (*TodoListAPI, error) {
+	if len(table) == 0 {
+		table = DefaultTableName
+	}
+	db, err := gonorm.NewDynDB(table)
+	if err != nil {
+		return nil, err
+	}
+	return &TodoListAPI{db: db}, nil
+}
+
+func NewRAMTodoList() (*TodoListAPI, error) {
+	return &TodoListAPI{db: gonorm.NewRAMDB()}, nil
+}
 
 type TodoItem struct {
 	Done   bool   `json:"done" dynamodbav:"done"`
@@ -25,29 +43,8 @@ type TodoChunk struct {
 	Next  string   `json:"next" dynamodbav:"next"`
 }
 
-type WriteTransaction struct {
-	// Create json items that must not already exist
-	creates map[string]interface{}
-
-	// Sets fields of json items
-	setFields map[string]map[string]interface{}
-
-	// Append strings to lists of strings
-	strListAppends map[string][]string
-
-	// Create empty lists of strings
-	strListCreates []string
-}
-
-type KeyValueDB interface {
-	HasKey(key string) (bool, error)
-	GetJson(key string, valueOut interface{}) error
-	GetStringList(key string, valueOut *[]string) error
-	DoWriteTransaction(transaction WriteTransaction) error
-}
-
 type TodoListAPI struct {
-	db KeyValueDB
+	db gonorm.KeyValueDB
 }
 
 func (todo *TodoListAPI) NewList(c *fiber.Ctx) error {
@@ -72,12 +69,12 @@ func (todo *TodoListAPI) NewList(c *fiber.Ctx) error {
 	list := TodoList{list_id, inputList.Name, chunk_id}
 
 	err = todo.db.DoWriteTransaction(
-		WriteTransaction{
-			creates: map[string]interface{}{
+		gonorm.WriteTransaction{
+			Creates: map[string]interface{}{
 				chunk_key: chunk,
 				list_key:  list,
 			},
-			strListCreates: []string{chunk_key, list_key},
+			StrListCreates: []string{chunk_key, list_key},
 		},
 	)
 	if err != nil {
@@ -138,8 +135,8 @@ func (todo *TodoListAPI) SetTodoDone(c *fiber.Ctx) error {
 		return err
 	}
 
-	err = todo.db.DoWriteTransaction(WriteTransaction{
-		setFields: map[string]map[string]interface{}{
+	err = todo.db.DoWriteTransaction(gonorm.WriteTransaction{
+		SetFields: map[string]map[string]interface{}{
 			"/todo/" + id: {"done": done},
 		},
 	})
@@ -186,11 +183,11 @@ func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {
 	// TODO: Don't always add to the first chunk in the list
 	chunkKey := "/todo_chunk/" + todoList.TodoChunk
 	return todo.db.DoWriteTransaction(
-		WriteTransaction{
-			creates: map[string]interface{}{
+		gonorm.WriteTransaction{
+			Creates: map[string]interface{}{
 				todoKey: item,
 			},
-			strListAppends: map[string][]string{
+			StrListAppends: map[string][]string{
 				chunkKey: {item.Id},
 			},
 		},
