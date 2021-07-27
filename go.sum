@@ -1,5 +1,11 @@
 github.com/Anon7250/gonorm v0.0.0-20210719162743-96c462bf6e9a h1:vSH6tmjQeCQDhW5NVflY7bQ8OkfPUqe44rYDKJxYYmQ=
 github.com/Anon7250/gonorm v0.0.0-20210719162743-96c462bf6e9a/go.mod h1:oW2FuedO2pmIOceUfcEL8I8CkqmN0o85B5VeegThCuw=
+github.com/Anon7250/gonorm v0.0.0-20210727210826-4ebb287b9bf3 h1:xOtabn73HHZwweN/YKW3NQQzR818gWuLi5L9OSKdWts=
+github.com/Anon7250/gonorm v0.0.0-20210727210826-4ebb287b9bf3/go.mod h1:oW2FuedO2pmIOceUfcEL8I8CkqmN0o85B5VeegThCuw=
+github.com/Anon7250/gonorm v0.0.0-20210727221006-d61b45c0d6cf h1:UqNGwMGWOAktLm2eSfMcO9kn32zmeg+2TUOeOApESFQ=
+github.com/Anon7250/gonorm v0.0.0-20210727221006-d61b45c0d6cf/go.mod h1:oW2FuedO2pmIOceUfcEL8I8CkqmN0o85B5VeegThCuw=
+github.com/Anon7250/gonorm v0.0.0-20210727222540-393f5683a408 h1:rrHLizAzoam6r1v8X/A/DdnpzTdurHNA7608GAD08iE=
+github.com/Anon7250/gonorm v0.0.0-20210727222540-393f5683a408/go.mod h1:oW2FuedO2pmIOceUfcEL8I8CkqmN0o85B5VeegThCuw=
 github.com/andybalholm/brotli v1.0.2 h1:JKnhI/XQ75uFBTiuzXpzFrUriDPiZjlOSzh6wXogP0E=
 github.com/andybalholm/brotli v1.0.2/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
 github.com/aws/aws-sdk-go-v2 v1.7.1 h1:TswSc7KNqZ/K1Ijt3IkpXk/2+62vi3Q82Yrr5wSbRBQ=

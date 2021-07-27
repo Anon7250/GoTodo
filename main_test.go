@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -63,7 +64,7 @@ func TestAddTodoOk(t *testing.T) {
 		End()
 }
 
-func TestOneTodoListWithOneTodo(t *testing.T) {
+func TestOneTodoListWithOneItem(t *testing.T) {
 	app := newApp()
 
 	stubs := gostub.Stub(&GetUUID, func() (string, error) {
@@ -121,6 +122,103 @@ func TestOneTodoListWithOneTodo(t *testing.T) {
 		Get("/todos/fakeid1").
 		Expect(t).
 		Body(`{"done": true, "id": "fakeid1", "title": "something", "list_id": "fakeid1"}`).
+		Status(http.StatusOK).
+		End()
+}
+
+func TestOneTodoListWithThreeItems(t *testing.T) {
+	app := newApp()
+	var list TodoList
+	items := make([]TodoItem, 3)
+
+	// Create a todo list
+	NewTest(app).
+		Post("/lists").
+		Header("Content-Type", "application/json").
+		Body(`{"name": "test234"}`).
+		Expect(t).
+		Status(http.StatusOK).
+		End().JSON(&list)
+
+	// Create 3 todo items
+	NewTest(app).
+		Post("/todos").
+		Header("Content-Type", "application/json").
+		Body(`{"title": "milk", "list_id": "` + list.Id + `"}`).
+		Expect(t).
+		Status(http.StatusOK).
+		End().JSON(&items[0])
+	NewTest(app).
+		Post("/todos").
+		Header("Content-Type", "application/json").
+		Body(`{"title": "bread", "list_id": "` + list.Id + `"}`).
+		Expect(t).
+		Status(http.StatusOK).
+		End().JSON(&items[1])
+	NewTest(app).
+		Post("/todos").
+		Header("Content-Type", "application/json").
+		Body(`{"title": "egg", "list_id": "` + list.Id + `"}`).
+		Expect(t).
+		Status(http.StatusOK).
+		End().JSON(&items[2])
+
+	// Test features of the todo list and the todo items
+	NewTest(app).
+		Get("/list/" + list.Id).
+		Expect(t).
+		Body(`{"id": "` + list.Id + `", "name": "test234"}`).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Get("/list/" + list.Id + "/items").
+		QueryParams(map[string]string{"len": "10"}).
+		Expect(t).
+		Body(fmt.Sprintf(`["%v", "%v", "%v"]`, items[0].Id, items[1].Id, items[2].Id)).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Get("/list/" + list.Id + "/items").
+		QueryParams(map[string]string{"pos": "1", "len": "2"}).
+		Expect(t).
+		Body(fmt.Sprintf(`["%v", "%v"]`, items[1].Id, items[2].Id)).
+		Status(http.StatusOK).
+		End()
+
+	NewTest(app).
+		Get("/list/" + list.Id + "/items").
+		QueryParams(map[string]string{"done": "false"}).
+		Expect(t).
+		Body(fmt.Sprintf(`["%v", "%v", "%v"]`, items[0].Id, items[1].Id, items[2].Id)).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Get("/list/" + list.Id + "/items").
+		QueryParams(map[string]string{"done": "true"}).
+		Expect(t).
+		Body(`[]`).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Post("/todos/"+items[1].Id+"/done").
+		Header("Content-Type", "application/json").
+		Body(`true`).
+		Expect(t).
+		Status(http.StatusOK).
+		Body(`{}`).
+		End()
+	NewTest(app).
+		Get("/list/" + list.Id + "/items").
+		QueryParams(map[string]string{"done": "false"}).
+		Expect(t).
+		Body(fmt.Sprintf(`["%v", "%v"]`, items[0].Id, items[2].Id)).
+		Status(http.StatusOK).
+		End()
+	NewTest(app).
+		Get("/list/" + list.Id + "/items").
+		QueryParams(map[string]string{"done": "true"}).
+		Expect(t).
+		Body(fmt.Sprintf(`["%v"]`, items[1].Id)).
 		Status(http.StatusOK).
 		End()
 }

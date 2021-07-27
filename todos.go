@@ -93,12 +93,25 @@ func (todo *TodoListAPI) GetList(c *fiber.Ctx) error {
 	return todo.respondWithList(c, todoList)
 }
 
+type GetListItemsQuery struct {
+	Done     *bool `query:"done"`
+	Position *int  `query:"pos"`
+	Length   *int  `query:"len"`
+}
+
 func (todo *TodoListAPI) GetListItems(c *fiber.Ctx) error {
 	id := c.Params("id")
+	var query GetListItemsQuery
+
+	err := c.QueryParser(&query)
+	if err != nil {
+		return err
+	}
+
 	var todoList TodoList
 	var todoListItems []string
-	var todoChunkItems []string
-	err := todo.db.GetJson("/list/"+id, &todoList)
+	todoChunkItems := make([]string, 0)
+	err = todo.db.GetJson("/list/"+id, &todoList)
 	if err != nil {
 		return err
 	}
@@ -112,6 +125,52 @@ func (todo *TodoListAPI) GetListItems(c *fiber.Ctx) error {
 	err = todo.db.GetStringList("/todo_chunk/"+todoList.TodoChunk, &todoChunkItems)
 	if err != nil {
 		return err
+	}
+
+	if query.Position != nil {
+		if *query.Position >= len(todoChunkItems) {
+			todoChunkItems = make([]string, 0)
+		} else {
+			todoChunkItems = todoChunkItems[*query.Position:]
+		}
+	}
+	if query.Length != nil {
+		if *query.Length < len(todoChunkItems) {
+			todoChunkItems = todoChunkItems[:*query.Length]
+		}
+	}
+	if query.Done != nil {
+		keys := make([]string, 0)
+		oldIds := todoChunkItems
+		for _, id := range oldIds {
+			keys = append(keys, "/todo/"+id)
+		}
+
+		valiIds := make(map[string]bool)
+		var rawTodoItems []interface{}
+		err := todo.db.GetJsons(keys, &rawTodoItems)
+		if err != nil {
+			return err
+		}
+		for _, rawTodoItem := range rawTodoItems {
+			var todoItem TodoItem
+			err := todo.db.Unmarshal(rawTodoItem, &todoItem)
+			if err != nil {
+				return err
+			}
+			if todoItem.Done != *query.Done {
+				continue
+			}
+			valiIds[todoItem.Id] = true
+		}
+
+		todoChunkItems = make([]string, 0)
+		for _, id := range oldIds {
+			_, ok := valiIds[id]
+			if ok {
+				todoChunkItems = append(todoChunkItems, id)
+			}
+		}
 	}
 	return c.JSON(todoChunkItems)
 }
@@ -182,7 +241,7 @@ func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {
 
 	// TODO: Don't always add to the first chunk in the list
 	chunkKey := "/todo_chunk/" + todoList.TodoChunk
-	return todo.db.DoWriteTransaction(
+	err = todo.db.DoWriteTransaction(
 		gonorm.WriteTransaction{
 			Creates: map[string]interface{}{
 				todoKey: item,
@@ -192,6 +251,10 @@ func (todo *TodoListAPI) AddTodo(c *fiber.Ctx) error {
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
+	return c.JSON(item)
 }
 
 func (todo *TodoListAPI) HealthCheck(c *fiber.Ctx) error {
